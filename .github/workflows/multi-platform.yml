@@ -31,7 +31,7 @@ jobs:
           combine: true
           target: ${{ matrix.config.target }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache: false
+          ccache-variant: ""
 
   package:
     name: Package builds
