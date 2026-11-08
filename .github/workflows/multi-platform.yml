@@ -25,43 +25,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Windows: ninja already installed via choco, sccache already installed via cargo
-      # Just add both to PATH — zero downloads needed
-      - name: Add pre-installed tools to PATH (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Ninja is already at C:\ProgramData\chocolatey\bin\ninja.exe
-          echo "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          # sccache is pre-installed via Rust/Cargo
-          echo "C:\Users\runneradmin\.cargo\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          Write-Host "Ninja version:"
-          ninja --version
-
-      # macOS: install via brew (never touches GitHub releases)
-      - name: Pre-install ninja + sccache (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install ninja sccache
-          sudo cp $(which sccache) /usr/local/bin/sccache
-          ninja --version
-          sccache --version
-
-      # Linux: install via apt (never touches GitHub releases)
-      - name: Pre-install ninja + sccache (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get install -y ninja-build sccache
-          sudo cp $(which sccache) /usr/local/bin/sccache
-          ninja --version
-          sccache --version
-
       - name: Build the mod
         uses: geode-sdk/build-geode-mod@main
         with:
           combine: true
           target: ${{ matrix.config.target }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: false
 
   package:
     name: Package builds
