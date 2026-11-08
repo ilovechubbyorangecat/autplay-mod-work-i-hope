@@ -1,3 +1,3 @@
-# {{ name }}
+# Auto play mod
 
-Edit about.md to change this
+A mod where you can autoplay made by indonesiangamer777
