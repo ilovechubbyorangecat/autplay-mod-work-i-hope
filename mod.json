@@ -1,13 +1,14 @@
 {
-    "geode": "v5.11.2",
-    "gd": {
-        "win": "2.2081",
-        "android": "2.2081",
-        "mac": "2.2081"
-    },
-    "id": "yourname.yourmodname",
-    "name": "My First Mod",
-    "version": "v1.0.0",
-    "developer": "YourName",
-    "description": "My first Geode mod!"
+	"geode": "v5.11.2",
+	"gd": {
+		"win": "2.2081",
+		"android": "2.2081",
+		"mac": "2.2081",
+		"ios": "2.2081"
+	},
+	"id": "yourname.yourmodname",
+	"name": "My First Mod",
+	"version": "v1.0.0",
+	"developer": "YourName",
+	"description": "My first Geode mod!"
 }
