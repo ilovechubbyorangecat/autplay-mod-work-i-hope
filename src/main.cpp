@@ -21,19 +21,18 @@ class $modify(MyPlayLayer, PlayLayer) {
 
         auto winSize = cocos2d::CCDirector::sharedDirector()->getWinSize();
         
-        // Status Label
         m_fields->m_statusLabel = cocos2d::CCLabelBMFont::create("AUTOPLAY ON", "goldFont.fnt");
         m_fields->m_statusLabel->setPosition({ winSize.width / 2, 40 });
         m_fields->m_statusLabel->setScale(0.7f);
-        m_fields->m_statusLabel->setID("autoplay-status-label");
         m_fields->m_statusLabel->setVisible(g_autoplayEnabled);
         this->addChild(m_fields->m_statusLabel, 100);
 
-        // Setup Ghost
         m_fields->m_ghostPlayer = PlayerObject::create(1, 1, this, false);
-        m_fields->m_ghostPlayer->retain(); // Keep it alive
-        m_fields->m_ghostPlayer->setVisible(false);
-        this->addChild(m_fields->m_ghostPlayer);
+        if (m_fields->m_ghostPlayer) {
+            m_fields->m_ghostPlayer->retain();
+            m_fields->m_ghostPlayer->setVisible(false);
+            this->addChild(m_fields->m_ghostPlayer);
+        }
 
         return true;
     }
@@ -74,15 +73,14 @@ class $modify(MyPlayLayer, PlayLayer) {
 
         if (!g_autoplayEnabled || !this->m_player1 || this->m_player1->m_isDead) return;
 
-        // 1. Sync ghost to real player
         syncGhost();
 
-        // 2. Simulate frames ahead
         bool shouldJump = false;
         bool shouldRelease = false;
         auto g = m_fields->m_ghostPlayer;
+        if (!g) return;
 
-        // Check if dies doing nothing
+        // Simulation
         for (int i = 0; i < m_fields->m_bufferSize; i++) {
             g->update(1.0f);
             if (g->m_isDead) {
@@ -91,7 +89,6 @@ class $modify(MyPlayLayer, PlayLayer) {
             }
         }
 
-        // Check if dies while holding (if we were to jump)
         if (shouldJump) {
             syncGhost();
             g_isBotDoingAction = true;
@@ -106,7 +103,6 @@ class $modify(MyPlayLayer, PlayLayer) {
             g_isBotDoingAction = false;
         }
 
-        // 3. Execute
         g_isBotDoingAction = true;
         if (shouldJump && !shouldRelease) {
             this->handleButton(true, 1, true);
@@ -127,12 +123,10 @@ class $modify(MyGJBaseGameLayer, GJBaseGameLayer) {
 class $modify(MyCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
     bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool down, bool isKeyRepeat, double idk) {
         if (key == cocos2d::enumKeyCodes::KEY_K && down && !isKeyRepeat) {
-            if (auto pl = PlayLayer::get()) {
-                g_autoplayEnabled = !g_autoplayEnabled;
-                std::string msg = g_autoplayEnabled ? "Autoplay: ON" : "Autoplay: OFF";
-                Notification::create(msg, NotificationIcon::Success)->show();
-            }
+            g_autoplayEnabled = !g_autoplayEnabled;
+            std::string msg = g_autoplayEnabled ? "Autoplay: ON" : "Autoplay: OFF";
+            Notification::create(msg, NotificationIcon::Success)->show();
         }
-        return CCKeyboardDispatcher::dispatchKeyboardMSG(key, down, isKeyRepeat, idk);
+        return cocos2d::CCKeyboardDispatcher::dispatchKeyboardMSG(key, down, isKeyRepeat, idk);
     }
 };
