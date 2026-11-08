@@ -22,32 +22,37 @@ jobs:
           target: Android64
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
+    env:
+      # Tell the action's internal steps that ninja is already on PATH
+      NINJA_EXE: ninja
     steps:
       - uses: actions/checkout@v4
 
-      # Pre-place sccache at the EXACT path ccache-action checks
-      # If the file is already there, it skips its broken download entirely
-      - name: Pre-install sccache (Linux)
-        if: runner.os == 'Linux'
+      - name: Pre-install ninja + sccache (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          sudo apt-get install -y sccache
-          sudo cp $(which sccache) /usr/local/bin/sccache
-          sudo chmod +x /usr/local/bin/sccache
-          echo "sccache ready at $(which sccache)"
+          choco install ninja -y
+          choco install sccache -y
+          # Put choco bin on PATH for subsequent steps
+          echo "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          ninja --version
           sccache --version
 
-      - name: Pre-install sccache (macOS)
+      - name: Pre-install ninja + sccache (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install sccache
+          brew install ninja sccache
           sudo cp $(which sccache) /usr/local/bin/sccache
-          sudo chmod +x /usr/local/bin/sccache
+          ninja --version
           sccache --version
 
-      - name: Pre-install sccache (Windows)
-        if: runner.os == 'Windows'
+      - name: Pre-install ninja + sccache (Linux)
+        if: runner.os == 'Linux'
         run: |
-          choco install sccache -y
+          sudo apt-get install -y ninja-build sccache
+          sudo cp $(which sccache) /usr/local/bin/sccache
+          ninja --version
           sccache --version
 
       - name: Build the mod
