@@ -4,5 +4,5 @@
     "developer": "YourName",
     "description": "My first Geode mod!",
     "version": "v1.0.0",
-    "geode": ">=4.0.0"
+    "geode": "2.206.0"
 }
