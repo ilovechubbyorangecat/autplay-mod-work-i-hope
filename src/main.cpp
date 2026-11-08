@@ -5,9 +5,8 @@
 #include <Geode/modify/EffectGameObject.hpp>
 #include <Geode/modify/CCKeyboardDispatcher.hpp>
 #include <Geode/ui/Popup.hpp>
+#include <Geode/ui/General.hpp>
 #include <vector>
-#include <deque>
-#include <chrono>
 #include <algorithm>
 
 using namespace geode::prelude;
@@ -19,21 +18,21 @@ namespace {
         return 1ull << static_cast<int>(type);
     }
 
-    constexpr uint64_t COLLIDING_TYPES = 
-        typeBit(GameObjectType::Solid) | 
-        typeBit(GameObjectType::Hazard) | 
+    constexpr uint64_t COLLIDING_TYPES =
+        typeBit(GameObjectType::Solid) |
+        typeBit(GameObjectType::Hazard) |
         typeBit(GameObjectType::Slope) |
-        typeBit(GameObjectType::CollisionObject) | 
+        typeBit(GameObjectType::CollisionObject) |
         typeBit(GameObjectType::AnimatedHazard);
 
     constexpr uint64_t INTERACT_TYPES =
-        typeBit(GameObjectType::YellowJumpPad) | typeBit(GameObjectType::PinkJumpPad) | 
-        typeBit(GameObjectType::RedJumpPad) | typeBit(GameObjectType::GravityPad) | 
-        typeBit(GameObjectType::SpiderPad) | typeBit(GameObjectType::YellowJumpRing) | 
-        typeBit(GameObjectType::PinkJumpRing) | typeBit(GameObjectType::RedJumpRing) | 
-        typeBit(GameObjectType::GravityRing) | typeBit(GameObjectType::GreenRing) | 
-        typeBit(GameObjectType::DropRing) | typeBit(GameObjectType::CustomRing) | 
-        typeBit(GameObjectType::DashRing) | typeBit(GameObjectType::GravityDashRing) | 
+        typeBit(GameObjectType::YellowJumpPad) | typeBit(GameObjectType::PinkJumpPad) |
+        typeBit(GameObjectType::RedJumpPad) | typeBit(GameObjectType::GravityPad) |
+        typeBit(GameObjectType::SpiderPad) | typeBit(GameObjectType::YellowJumpRing) |
+        typeBit(GameObjectType::PinkJumpRing) | typeBit(GameObjectType::RedJumpRing) |
+        typeBit(GameObjectType::GravityRing) | typeBit(GameObjectType::GreenRing) |
+        typeBit(GameObjectType::DropRing) | typeBit(GameObjectType::CustomRing) |
+        typeBit(GameObjectType::DashRing) | typeBit(GameObjectType::GravityDashRing) |
         typeBit(GameObjectType::SpiderOrb);
 
     struct ObjSnapshot {
@@ -58,10 +57,10 @@ namespace {
         bool active = false;
         bool takeOver = false;
         int lookaheadHorizon = 80;
-        
+
         int attemptTick = 0;
         bool buttonState = false;
-        
+
         std::vector<int> plannedFlips;
         int verifyAtTick = -1;
         int planSafeUntil = -1;
@@ -100,9 +99,7 @@ namespace {
     void startAutoplay(PlayLayer* layer);
     void stopAutoplay(PlayLayer* layer);
 
-    bool isGhost(PlayerObject* p) {
-        return p && p == g_ghost.ghost;
-    }
+    bool isGhost(PlayerObject* p) { return p && p == g_ghost.ghost; }
 
     bool isFlyingMode(PlayerObject* p) {
         return p && (p->m_isDart || p->m_isBird || p->m_isSwing || p->m_isShip);
@@ -133,7 +130,6 @@ namespace {
         }
     }
 
-    // ✅ Fixed: removed copyAttributes and resetTouchedRings
     void copyState(PlayerObject* ghost, PlayerObject* real) {
         ghost->setVisible(false);
         ghost->setScale(real->getScale());
@@ -160,7 +156,7 @@ namespace {
     void snapshotObject(GameObject* obj) {
         if (!obj || g_ghost.usedObjects.contains(obj)) return;
         g_ghost.usedObjects.insert(obj);
-        ObjSnapshot s { obj, obj->m_isActivated, nullptr, false };
+        ObjSnapshot s{obj, obj->m_isActivated, nullptr, false};
         if (auto* effect = typeinfo_cast<EffectGameObject*>(obj)) {
             s.effect = effect;
             s.activated = effect->m_activated;
@@ -171,9 +167,7 @@ namespace {
     void restoreObjects() {
         for (auto const& s : g_ghost.snapshots) {
             s.object->m_isActivated = s.isActivated;
-            if (s.effect) {
-                s.effect->m_activated = s.activated;
-            }
+            if (s.effect) s.effect->m_activated = s.activated;
         }
         g_ghost.snapshots.clear();
         g_ghost.usedObjects.clear();
@@ -195,14 +189,12 @@ namespace {
 
     void setGhostButton(bool down) {
         g_ghost.held = down;
-        if (down) {
-            g_ghost.ghost->pushButton(PlayerButton::Jump);
-        } else {
-            g_ghost.ghost->releaseButton(PlayerButton::Jump);
-        }
+        if (down) g_ghost.ghost->pushButton(PlayerButton::Jump);
+        else g_ghost.ghost->releaseButton(PlayerButton::Jump);
     }
 
-    int simulatePlan(PlayLayer* layer, PlayerObject* real, std::vector<int> const& relativeFlips, int horizon) {
+    int simulatePlan(PlayLayer* layer, PlayerObject* real,
+                     std::vector<int> const& relativeFlips, int horizon) {
         auto* ghost = getOrCreateGhost(layer);
         g_ghost.simulating = true;
         g_ghost.ghostDied = false;
@@ -214,18 +206,13 @@ namespace {
 
         for (int tick = 0; tick < horizon; ++tick) {
             for (int flipTick : relativeFlips) {
-                if (flipTick == tick) {
-                    setGhostButton(!g_ghost.held);
-                }
+                if (flipTick == tick) setGhostButton(!g_ghost.held);
             }
-
             ghost->update(dt);
             ghost->updateRotation(dt);
             if (g_ghost.ghostDied) break;
-
             layer->checkCollisions(ghost, dt, false);
             if (g_ghost.ghostDied) break;
-
             ++survived;
         }
 
@@ -235,15 +222,15 @@ namespace {
         return survived;
     }
 
-    int planSearch(PlayLayer* layer, PlayerObject* real, std::vector<int>& currentRelPlan, int depth, int horizon, std::vector<int>& bestPlan, int& bestSurvived) {
+    int planSearch(PlayLayer* layer, PlayerObject* real,
+                   std::vector<int>& currentRelPlan, int depth, int horizon,
+                   std::vector<int>& bestPlan, int& bestSurvived) {
         int survived = simulatePlan(layer, real, currentRelPlan, horizon);
         if (survived > bestSurvived) {
             bestSurvived = survived;
             bestPlan = currentRelPlan;
         }
-        if (survived >= horizon || depth <= 0) {
-            return survived;
-        }
+        if (survived >= horizon || depth <= 0) return survived;
 
         bool holdMode = isFlyingMode(real);
         int lastFlip = currentRelPlan.empty() ? -1 : currentRelPlan.back();
@@ -254,31 +241,24 @@ namespace {
             if (flipTick <= lastFlip) break;
 
             currentRelPlan.push_back(flipTick);
-            if (!holdMode) {
-                currentRelPlan.push_back(flipTick + 4);
-            }
+            if (!holdMode) currentRelPlan.push_back(flipTick + 4);
 
             int res = planSearch(layer, real, currentRelPlan, depth - 1, horizon, bestPlan, bestSurvived);
-            
+
             currentRelPlan.pop_back();
             if (!holdMode) currentRelPlan.pop_back();
 
             if (res >= horizon) return res;
         }
-
         return bestSurvived;
     }
 
     void applyAutoplayButton(PlayLayer* layer, bool down) {
         if (g_autoplay.buttonState == down) return;
         g_autoplay.buttonState = down;
-        g_autoplay.attemptFlips.push_back({ g_autoplay.attemptTick, down });
-
-        if (down) {
-            layer->m_player1->pushButton(PlayerButton::Jump);
-        } else {
-            layer->m_player1->releaseButton(PlayerButton::Jump);
-        }
+        g_autoplay.attemptFlips.push_back({g_autoplay.attemptTick, down});
+        if (down) layer->m_player1->pushButton(PlayerButton::Jump);
+        else layer->m_player1->releaseButton(PlayerButton::Jump);
     }
 
     void drawAutoplayTrail() {
@@ -287,7 +267,8 @@ namespace {
         auto const& pts = g_autoplay.trailPoints;
         for (size_t i = 1; i < pts.size(); ++i) {
             if (ccpDistance(pts[i - 1], pts[i]) < 120.f) {
-                g_autoplay.trailNode->drawSegment(pts[i - 1], pts[i], 1.2f, { 0.2f, 1.f, 0.5f, 0.9f });
+                g_autoplay.trailNode->drawSegment(pts[i - 1], pts[i], 1.2f,
+                    {0.2f, 1.f, 0.5f, 0.9f});
             }
         }
     }
@@ -295,10 +276,7 @@ namespace {
     void stopAutoplay(PlayLayer* layer) {
         if (!g_autoplay.active) return;
         g_autoplay.active = false;
-
-        if (layer && layer->m_player1) {
-            applyAutoplayButton(layer, false);
-        }
+        if (layer && layer->m_player1) applyAutoplayButton(layer, false);
         if (g_autoplay.tagLabel) {
             g_autoplay.tagLabel->removeFromParent();
             g_autoplay.tagLabel = nullptr;
@@ -311,7 +289,6 @@ namespace {
 
     void startAutoplay(PlayLayer* layer) {
         if (!layer || layer->m_isPlatformer) return;
-
         layer->m_isTestMode = true;
         g_autoplay.active = true;
         g_autoplay.resetForNewAttempt();
@@ -319,9 +296,9 @@ namespace {
         auto win = CCDirector::get()->getWinSize();
         g_autoplay.tagLabel = CCLabelBMFont::create("AUTOPLAY", "bigFont.fnt");
         g_autoplay.tagLabel->setScale(0.45f);
-        g_autoplay.tagLabel->setColor({ 255, 215, 90 });
+        g_autoplay.tagLabel->setColor({255, 215, 90});
         g_autoplay.tagLabel->setOpacity(220);
-        g_autoplay.tagLabel->setPosition({ win.width / 2.f, win.height - 25.f });
+        g_autoplay.tagLabel->setPosition({win.width / 2.f, win.height - 25.f});
         layer->addChild(g_autoplay.tagLabel, 1000);
 
         g_autoplay.trailNode = CCDrawNode::create();
@@ -337,41 +314,40 @@ namespace {
             drawAutoplayTrail();
         }
 
-        if (currentTick < g_autoplay.knownUntilTick && g_autoplay.replayIdx < g_autoplay.knownFlips.size()) {
-            while (g_autoplay.replayIdx < g_autoplay.knownFlips.size() && 
+        if (currentTick < g_autoplay.knownUntilTick &&
+            g_autoplay.replayIdx < g_autoplay.knownFlips.size()) {
+            while (g_autoplay.replayIdx < g_autoplay.knownFlips.size() &&
                    g_autoplay.knownFlips[g_autoplay.replayIdx].first <= currentTick) {
-                if (g_autoplay.knownFlips[g_autoplay.replayIdx].first == currentTick) {
+                if (g_autoplay.knownFlips[g_autoplay.replayIdx].first == currentTick)
                     applyAutoplayButton(layer, g_autoplay.knownFlips[g_autoplay.replayIdx].second);
-                }
                 ++g_autoplay.replayIdx;
             }
             return;
         }
 
-        while (!g_autoplay.plannedFlips.empty() && g_autoplay.plannedFlips.front() <= currentTick) {
+        while (!g_autoplay.plannedFlips.empty() &&
+               g_autoplay.plannedFlips.front() <= currentTick) {
             g_autoplay.plannedFlips.erase(g_autoplay.plannedFlips.begin());
             applyAutoplayButton(layer, !g_autoplay.buttonState);
         }
 
         if (currentTick < g_autoplay.verifyAtTick) return;
 
-        int horizon = isFlyingMode(p1) ? (g_autoplay.lookaheadHorizon - 20) : g_autoplay.lookaheadHorizon;
-        std::vector<int> candidatePlan;
-        std::vector<int> bestPlan;
+        int horizon = isFlyingMode(p1)
+            ? (g_autoplay.lookaheadHorizon - 20)
+            : g_autoplay.lookaheadHorizon;
+        std::vector<int> candidatePlan, bestPlan;
         int bestSurvived = 0;
-
         planSearch(layer, p1, candidatePlan, 4, horizon, bestPlan, bestSurvived);
 
         if (!bestPlan.empty()) {
             g_autoplay.plannedFlips.clear();
-            for (int rel : bestPlan) {
+            for (int rel : bestPlan)
                 g_autoplay.plannedFlips.push_back(currentTick + rel);
-            }
         }
 
         g_autoplay.planSafeUntil = currentTick + bestSurvived;
         g_autoplay.verifyAtTick = currentTick + (bestSurvived >= horizon ? 8 : 1);
-
         sweepGhostLayer();
     }
 }
@@ -379,13 +355,13 @@ namespace {
 // ==========================================
 //           AUTOPLAY CONTROL GUI
 // ==========================================
+
+// ✅ Fixed: Proper Geode Popup usage
 class AutoplayMenu : public geode::Popup<> {
 protected:
     CCLabelBMFont* m_statusLabel = nullptr;
     CCLabelBMFont* m_statsLabel = nullptr;
     CCLabelBMFont* m_horizonLabel = nullptr;
-
-    // ✅ Fixed: Store labels directly instead of ButtonSprite pointers
     CCLabelBMFont* m_toggleLabel = nullptr;
     CCLabelBMFont* m_takeoverLabel = nullptr;
 
@@ -393,74 +369,100 @@ protected:
         this->setTitle("Autoplay Control");
         auto win = m_mainLayer->getContentSize();
 
+        // Status label
         m_statusLabel = CCLabelBMFont::create("", "bigFont.fnt");
-        m_statusLabel->setScale(0.45f);
-        m_statusLabel->setPosition({ win.width / 2.f, win.height - 50.f });
+        m_statusLabel->setScale(0.4f);
+        m_statusLabel->setPosition({win.width / 2.f, win.height - 50.f});
         m_mainLayer->addChild(m_statusLabel);
 
         auto* menu = CCMenu::create();
-        menu->setPosition({ 0.f, 0.f });
+        menu->setPosition({0.f, 0.f});
         m_mainLayer->addChild(menu);
 
-        // ✅ Fixed: Store label reference for toggle button
-        auto* toggleSpr = ButtonSprite::create("Toggle Autoplay", "goldFont.fnt", "GJ_button_01.png", 0.8f);
-        m_toggleLabel = static_cast<CCLabelBMFont*>(toggleSpr->getChildByTag(0));
-        auto* toggleBtn = CCMenuItemSpriteExtra::create(
-            toggleSpr, this, menu_selector(AutoplayMenu::onToggleAutoplay)
-        );
-        toggleBtn->setPosition({ win.width / 2.f, win.height - 85.f });
+        // ✅ Fixed: Use CCMenuItemExt::createSpriteExtra with lambdas
+        auto* toggleSpr = ButtonSprite::create("Toggle Autoplay", "goldFont.fnt", "GJ_button_01.png", 0.7f);
+        // Store the label for later text updates
+        m_toggleLabel = CCLabelBMFont::create("Toggle Autoplay", "goldFont.fnt");
+        m_toggleLabel->setVisible(false);
+        m_mainLayer->addChild(m_toggleLabel);
+
+        auto* toggleBtn = CCMenuItemExt::createSpriteExtra(toggleSpr, [this](CCObject*) {
+            auto* playLayer = GameManager::get()->m_playLayer;
+            if (!playLayer) {
+                FLAlertLayer::create("Autoplay", "Open a level first to enable Autoplay.", "OK")->show();
+                return;
+            }
+            if (g_autoplay.active) stopAutoplay(playLayer);
+            else startAutoplay(playLayer);
+            updateUI();
+        });
+        toggleBtn->setPosition({win.width / 2.f, win.height - 85.f});
         menu->addChild(toggleBtn);
 
-        // ✅ Fixed: Store label reference for takeover button
-        auto* takeoverSpr = ButtonSprite::create("Takeover: OFF", "bigFont.fnt", "GJ_button_04.png", 0.6f);
-        m_takeoverLabel = static_cast<CCLabelBMFont*>(takeoverSpr->getChildByTag(0));
-        auto* takeoverBtn = CCMenuItemSpriteExtra::create(
-            takeoverSpr, this, menu_selector(AutoplayMenu::onToggleTakeover)
-        );
-        takeoverBtn->setPosition({ win.width / 2.f - 65.f, win.height - 125.f });
+        // Takeover button
+        auto* takeoverSpr = ButtonSprite::create("Takeover: OFF", "bigFont.fnt", "GJ_button_04.png", 0.55f);
+        auto* takeoverBtn = CCMenuItemExt::createSpriteExtra(takeoverSpr, [this](CCObject*) {
+            g_autoplay.takeOver = !g_autoplay.takeOver;
+            updateUI();
+        });
+        takeoverBtn->setPosition({win.width / 2.f - 60.f, win.height - 125.f});
         menu->addChild(takeoverBtn);
+        // Store label ref from sprite
+        m_takeoverLabel = static_cast<CCLabelBMFont*>(takeoverSpr->getChildByTag(0));
 
-        auto* clearMemorySprite = ButtonSprite::create("Reset Memory", "bigFont.fnt", "GJ_button_06.png", 0.6f);
-        auto* clearBtn = CCMenuItemSpriteExtra::create(
-            clearMemorySprite, this, menu_selector(AutoplayMenu::onClearMemory)
-        );
-        clearBtn->setPosition({ win.width / 2.f + 65.f, win.height - 125.f });
+        // Clear memory button
+        auto* clearSpr = ButtonSprite::create("Reset Memory", "bigFont.fnt", "GJ_button_06.png", 0.55f);
+        auto* clearBtn = CCMenuItemExt::createSpriteExtra(clearSpr, [this](CCObject*) {
+            g_autoplay.clearLearnedMemory();
+            FLAlertLayer::create("Autoplay", "Learned memory cleared.", "OK")->show();
+            updateUI();
+        });
+        clearBtn->setPosition({win.width / 2.f + 60.f, win.height - 125.f});
         menu->addChild(clearBtn);
 
-        auto* horizonTitle = CCLabelBMFont::create("Lookahead Horizon:", "bigFont.fnt");
+        // Lookahead horizon label
+        auto* horizonTitle = CCLabelBMFont::create("Lookahead:", "bigFont.fnt");
         horizonTitle->setScale(0.35f);
-        horizonTitle->setPosition({ win.width / 2.f - 40.f, win.height - 160.f });
+        horizonTitle->setPosition({win.width / 2.f - 35.f, win.height - 160.f});
         m_mainLayer->addChild(horizonTitle);
 
-        m_horizonLabel = CCLabelBMFont::create("", "goldFont.fnt");
-        m_horizonLabel->setScale(0.45f);
-        m_horizonLabel->setPosition({ win.width / 2.f + 35.f, win.height - 160.f });
+        m_horizonLabel = CCLabelBMFont::create("80t", "goldFont.fnt");
+        m_horizonLabel->setScale(0.4f);
+        m_horizonLabel->setPosition({win.width / 2.f + 20.f, win.height - 160.f});
         m_mainLayer->addChild(m_horizonLabel);
 
-        auto* minusSpr = ButtonSprite::create("-", "bigFont.fnt", "GJ_button_02.png", 0.6f);
-        auto* minusBtn = CCMenuItemSpriteExtra::create(minusSpr, this, menu_selector(AutoplayMenu::onHorizonMinus));
-        minusBtn->setPosition({ win.width / 2.f + 70.f, win.height - 160.f });
+        // Minus button
+        auto* minusSpr = ButtonSprite::create("-", "bigFont.fnt", "GJ_button_02.png", 0.5f);
+        auto* minusBtn = CCMenuItemExt::createSpriteExtra(minusSpr, [this](CCObject*) {
+            g_autoplay.lookaheadHorizon = std::max(40, g_autoplay.lookaheadHorizon - 10);
+            updateUI();
+        });
+        minusBtn->setPosition({win.width / 2.f + 65.f, win.height - 160.f});
         menu->addChild(minusBtn);
 
-        auto* plusSpr = ButtonSprite::create("+", "bigFont.fnt", "GJ_button_02.png", 0.6f);
-        auto* plusBtn = CCMenuItemSpriteExtra::create(plusSpr, this, menu_selector(AutoplayMenu::onHorizonPlus));
-        plusBtn->setPosition({ win.width / 2.f + 95.f, win.height - 160.f });
+        // Plus button
+        auto* plusSpr = ButtonSprite::create("+", "bigFont.fnt", "GJ_button_02.png", 0.5f);
+        auto* plusBtn = CCMenuItemExt::createSpriteExtra(plusSpr, [this](CCObject*) {
+            g_autoplay.lookaheadHorizon = std::min(160, g_autoplay.lookaheadHorizon + 10);
+            updateUI();
+        });
+        plusBtn->setPosition({win.width / 2.f + 90.f, win.height - 160.f});
         menu->addChild(plusBtn);
 
+        // Stats card background
         auto* statsCard = CCScale9Sprite::create("square02_small.png");
-        statsCard->setContentSize({ win.width - 40.f, 42.f });
+        statsCard->setContentSize({win.width - 40.f, 42.f});
         statsCard->setOpacity(110);
-        statsCard->setPosition({ win.width / 2.f, 32.f });
+        statsCard->setPosition({win.width / 2.f, 32.f});
         m_mainLayer->addChild(statsCard);
 
         m_statsLabel = CCLabelBMFont::create("", "chatFont.fnt");
-        m_statsLabel->setScale(0.6f);
-        m_statsLabel->setPosition({ win.width / 2.f, 32.f });
+        m_statsLabel->setScale(0.55f);
+        m_statsLabel->setPosition({win.width / 2.f, 32.f});
         m_mainLayer->addChild(m_statsLabel);
 
-        this->updateUI();
+        updateUI();
         this->scheduleUpdate();
-
         return true;
     }
 
@@ -472,76 +474,34 @@ protected:
         auto* playLayer = GameManager::get()->m_playLayer;
 
         if (g_autoplay.active) {
-            m_statusLabel->setString("Status: ACTIVE (Testing Mode)");
-            m_statusLabel->setColor({ 100, 255, 120 });
-            // ✅ Fixed: update label directly
-            if (m_toggleLabel) m_toggleLabel->setString("Stop Autoplay");
+            m_statusLabel->setString("Status: ACTIVE");
+            m_statusLabel->setColor({100, 255, 120});
         } else {
             m_statusLabel->setString("Status: INACTIVE");
-            m_statusLabel->setColor({ 255, 120, 120 });
-            if (m_toggleLabel) m_toggleLabel->setString("Start Autoplay");
+            m_statusLabel->setColor({255, 120, 120});
         }
-
-        // ✅ Fixed: update label directly
-        if (m_takeoverLabel) m_takeoverLabel->setString(g_autoplay.takeOver ? "Takeover: ON" : "Takeover: OFF");
 
         m_horizonLabel->setString(fmt::format("{}t", g_autoplay.lookaheadHorizon).c_str());
 
         if (playLayer && playLayer->m_player1) {
             m_statsLabel->setString(fmt::format(
-                "Mode: {}  |  Tick: {}  |  Known Safe: {}t  |  Best: {}t",
+                "Mode: {} | Tick: {} | Best: {}t",
                 getModeName(playLayer->m_player1),
                 g_autoplay.attemptTick,
-                g_autoplay.knownUntilTick,
                 g_autoplay.bestReachedTick
             ).c_str());
         } else {
-            m_statsLabel->setString("Not currently inside an active level.");
+            m_statsLabel->setString("Not inside a level.");
         }
-    }
-
-    void onToggleAutoplay(CCObject*) {
-        auto* playLayer = GameManager::get()->m_playLayer;
-        if (!playLayer) {
-            FLAlertLayer::create("Autoplay", "Open a level first to enable Autoplay.", "OK")->show();
-            return;
-        }
-
-        if (g_autoplay.active) {
-            stopAutoplay(playLayer);
-        } else {
-            startAutoplay(playLayer);
-        }
-        updateUI();
-    }
-
-    void onToggleTakeover(CCObject*) {
-        g_autoplay.takeOver = !g_autoplay.takeOver;
-        updateUI();
-    }
-
-    void onClearMemory(CCObject*) {
-        g_autoplay.clearLearnedMemory();
-        FLAlertLayer::create("Autoplay", "Learned memory cleared for this session.", "OK")->show();
-        updateUI();
-    }
-
-    void onHorizonMinus(CCObject*) {
-        g_autoplay.lookaheadHorizon = std::max(40, g_autoplay.lookaheadHorizon - 10);
-        updateUI();
-    }
-
-    void onHorizonPlus(CCObject*) {
-        g_autoplay.lookaheadHorizon = std::min(160, g_autoplay.lookaheadHorizon + 10);
-        updateUI();
     }
 
 public:
     static inline AutoplayMenu* s_instance = nullptr;
 
+    // ✅ Fixed: Correct Popup create pattern
     static AutoplayMenu* create() {
-        auto ret = new AutoplayMenu();
-        if (ret && ret->initAnchored(360.f, 230.f, "GJ_square01.png")) {
+        auto* ret = new AutoplayMenu();
+        if (ret->initAnchored(360.f, 230.f, "GJ_square01.png")) {
             ret->autorelease();
             return ret;
         }
@@ -550,20 +510,15 @@ public:
     }
 
     ~AutoplayMenu() override {
-        if (s_instance == this) {
-            s_instance = nullptr;
-        }
+        if (s_instance == this) s_instance = nullptr;
     }
 
     static void toggle() {
         if (s_instance) {
             s_instance->onClose(nullptr);
-            s_instance = nullptr;
         } else {
             s_instance = AutoplayMenu::create();
-            if (s_instance) {
-                s_instance->show();
-            }
+            if (s_instance) s_instance->show();
         }
     }
 };
@@ -575,8 +530,8 @@ public:
 class $modify(CCKeyboardDispatcher) {
     bool dispatchKeyboardMSG(enumKeyCodes key, bool down, bool isKeyRepeat) {
         if (down && !isKeyRepeat) {
-            if (key == enumKeyCodes::KEY_GraveAccent || 
-                key == static_cast<enumKeyCodes>(0xC0) || 
+            if (key == enumKeyCodes::KEY_GraveAccent ||
+                key == static_cast<enumKeyCodes>(0xC0) ||
                 key == static_cast<enumKeyCodes>(96)) {
                 AutoplayMenu::toggle();
                 return true;
@@ -600,9 +555,7 @@ class $modify(PlayLayer) {
 
     void resetLevel() {
         PlayLayer::resetLevel();
-        if (g_autoplay.active) {
-            g_autoplay.resetForNewAttempt();
-        }
+        if (g_autoplay.active) g_autoplay.resetForNewAttempt();
     }
 
     void destroyPlayer(PlayerObject* player, GameObject* object) {
@@ -620,9 +573,8 @@ class $modify(PlayLayer) {
             g_autoplay.knownUntilTick = std::max(0, g_autoplay.bestReachedTick - 30);
             g_autoplay.knownFlips.clear();
             for (auto const& f : g_autoplay.bestFlips) {
-                if (f.first < g_autoplay.knownUntilTick) {
+                if (f.first < g_autoplay.knownUntilTick)
                     g_autoplay.knownFlips.push_back(f);
-                }
             }
         }
 
@@ -630,9 +582,7 @@ class $modify(PlayLayer) {
     }
 
     void levelComplete() {
-        if (g_autoplay.active) {
-            log::info("Autoplay successfully beat the level in test mode!");
-        }
+        if (g_autoplay.active) log::info("Autoplay beat the level!");
         PlayLayer::levelComplete();
     }
 };
@@ -647,9 +597,7 @@ class $modify(PlayerObject) {
         auto* layer = GameManager::get()->m_playLayer;
         if (layer && this == layer->m_player1) {
             g_ghost.tickLength = dt;
-            if (g_autoplay.active) {
-                executeAutoplayTick(layer, this);
-            }
+            if (g_autoplay.active) executeAutoplayTick(layer, this);
         }
 
         PlayerObject::update(dt);
@@ -658,15 +606,12 @@ class $modify(PlayerObject) {
 
 class $modify(GJBaseGameLayer) {
     void handleButton(bool down, int button, bool isPlayer1) {
-        if (g_autoplay.active && !g_ghost.simulating) {
-            if (!g_autoplay.takeOver) {
-                return;
-            }
-        }
+        if (g_autoplay.active && !g_ghost.simulating && !g_autoplay.takeOver) return;
         GJBaseGameLayer::handleButton(down, button, isPlayer1);
     }
 
-    void collisionCheckObjects(PlayerObject* player, gd::vector<GameObject*>* objects, int objectCount, float dt) {
+    void collisionCheckObjects(PlayerObject* player, gd::vector<GameObject*>* objects,
+                               int objectCount, float dt) {
         if (!g_ghost.simulating) {
             GJBaseGameLayer::collisionCheckObjects(player, objects, objectCount, dt);
             return;
@@ -678,15 +623,13 @@ class $modify(GJBaseGameLayer) {
         for (int i = 0; i < objectCount; ++i) {
             auto* obj = (*objects)[i];
             if (!obj) continue;
-
             auto type = static_cast<unsigned>(obj->m_objectType);
             uint64_t bit = type < 64 ? (1ull << type) : 0;
-            if ((COLLIDING_TYPES | INTERACT_TYPES) & bit) {
-                relevant.push_back(obj);
-            }
+            if ((COLLIDING_TYPES | INTERACT_TYPES) & bit) relevant.push_back(obj);
         }
 
-        GJBaseGameLayer::collisionCheckObjects(player, &relevant, static_cast<int>(relevant.size()), dt);
+        GJBaseGameLayer::collisionCheckObjects(player, &relevant,
+            static_cast<int>(relevant.size()), dt);
     }
 
     bool canBeActivatedByPlayer(PlayerObject* player, EffectGameObject* object) {
