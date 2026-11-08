@@ -25,6 +25,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pre-place sccache at the EXACT path ccache-action checks
+      # If the file is already there, it skips its broken download entirely
+      - name: Pre-install sccache (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y sccache
+          sudo cp $(which sccache) /usr/local/bin/sccache
+          sudo chmod +x /usr/local/bin/sccache
+          echo "sccache ready at $(which sccache)"
+          sccache --version
+
+      - name: Pre-install sccache (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install sccache
+          sudo cp $(which sccache) /usr/local/bin/sccache
+          sudo chmod +x /usr/local/bin/sccache
+          sccache --version
+
+      - name: Pre-install sccache (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install sccache -y
+          sccache --version
+
       - name: Build the mod
         uses: geode-sdk/build-geode-mod@main
         with:
